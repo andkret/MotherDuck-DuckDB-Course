@@ -1,24 +1,18 @@
-# hybrid_heatmap_and_yearly.py
-# Requires: duckdb, numpy, matplotlib, pandas, python-dotenv
+# simple_hq_hotspot_sqlbins.py
 import os
 import math
 import numpy as np
 import duckdb
-import matplotlib.pyplot as plt # install first
-import pandas as pd # intall first
+import matplotlib.pyplot as plt
+import pandas as pd
 from dotenv import load_dotenv
 
-# ----------------------------
-# Config
-# ----------------------------
 DB_PATH = "elt.duckdb"
 RADIUS_MILES = 1.0
-BINS_X = 120    # heat map resolution (longitude bins)
-BINS_Y = 160    # heat map resolution (latitude bins)
-SORT_YEAR = "2022"  # pivot sort column
+SORT_YEAR = "2022"
 
 # ----------------------------
-# 1) Local data: load points (MANHATTAN, elevator) + robust HQ
+# 1) Get Manhattan elevator points
 # ----------------------------
 con = duckdb.connect(DB_PATH, read_only=True)
 
@@ -33,97 +27,80 @@ WHERE UPPER(borough) = 'MANHATTAN'
 """
 pts = con.execute(points_sql).fetchall()
 if not pts:
-    raise RuntimeError("No elevator points for MANHATTAN in clean_requests.")
+    raise RuntimeError("No elevator points found in Manhattan.")
 
-lats = np.array([p[0] for p in pts], dtype=float)
-lons = np.array([p[1] for p in pts], dtype=float)
+lats = np.array([p[0] for p in pts])
+lons = np.array([p[1] for p in pts])
 
-hotspot_sql = """
-WITH base AS (
+# ----------------------------
+# 2) HQ candidate: densest bin (hotspot)
+# ----------------------------
+hq_sql = """
+SELECT
+  ROUND(lat, 3) AS lat_bin,
+  ROUND(lon, 3) AS lon_bin,
+  COUNT(*) AS complaints_in_bin,
+  AVG(lat) AS avg_lat,
+  AVG(lon) AS avg_lon
+FROM (
   SELECT
-    CAST(latitude AS DOUBLE)  AS lat,
+    CAST(latitude AS DOUBLE) AS lat,
     CAST(longitude AS DOUBLE) AS lon
   FROM clean_requests
   WHERE UPPER(borough) = 'MANHATTAN'
     AND complaint_type = 'elevator'
     AND latitude IS NOT NULL AND longitude IS NOT NULL
-),
-bounds AS (
-  SELECT
-    quantile_cont(lat, 0.10) AS lat_p10,
-    quantile_cont(lat, 0.90) AS lat_p90,
-    quantile_cont(lon, 0.10) AS lon_p10,
-    quantile_cont(lon, 0.90) AS lon_p90
-  FROM base
-),
-clipped AS (
-  SELECT b.lat, b.lon
-  FROM base b, bounds t
-  WHERE b.lat BETWEEN t.lat_p10 AND t.lat_p90
-    AND b.lon BETWEEN t.lon_p10 AND t.lon_p90
-),
-clipped_bins AS (
-  SELECT
-    ROUND(lat, 3) AS lat_bin,
-    ROUND(lon, 3) AS lon_bin,
-    COUNT(*) AS cnt,
-    AVG(lat) AS avg_lat,
-    AVG(lon) AS avg_lon
-  FROM clipped
-  GROUP BY 1,2
-  ORDER BY cnt DESC
-  LIMIT 1
-),
-overall_bins AS (
-  SELECT
-    ROUND(lat, 3) AS lat_bin,
-    ROUND(lon, 3) AS lon_bin,
-    COUNT(*) AS cnt,
-    AVG(lat) AS avg_lat,
-    AVG(lon) AS avg_lon
-  FROM base
-  GROUP BY 1,2
-  ORDER BY cnt DESC
-  LIMIT 1
 )
-SELECT
-  COALESCE(c.avg_lat, o.avg_lat) AS avg_lat,
-  COALESCE(c.avg_lon, o.avg_lon) AS avg_lon,
-  COALESCE(c.cnt,     o.cnt)     AS bin_count
-FROM clipped_bins c
-FULL OUTER JOIN overall_bins o ON TRUE;
+GROUP BY 1,2
+ORDER BY complaints_in_bin DESC
+LIMIT 1;
 """
-hq_lat, hq_lon, hotspot_count = con.execute(hotspot_sql).fetchone()
-print(f"HQ candidate (robust): lat={hq_lat:.6f}, lon={hq_lon:.6f}, complaints_in_bin={hotspot_count}")
+_, _, complaints_in_bin, hq_lat, hq_lon = con.execute(hq_sql).fetchone()
+
+print(f"HQ candidate (hotspot): lat={hq_lat:.6f}, lon={hq_lon:.6f}, complaints_in_bin={complaints_in_bin}")
 print("Google Maps:", f"https://www.google.com/maps?q={hq_lat:.6f},{hq_lon:.6f}")
 
 # ----------------------------
-# 2) Heat map (local)
+# 3) Local heat map (aligned with SQL bins)
 # ----------------------------
-# Pad plot bounds slightly
-pad_lat = (np.percentile(lats, 99) - np.percentile(lats, 1)) * 0.05
-pad_lon = (np.percentile(lons, 99) - np.percentile(lons, 1)) * 0.05
-lat_min, lat_max = lats.min() - pad_lat, lats.max() + pad_lat
-lon_min, lon_max = lons.min() - pad_lon, lons.max() + pad_lon
+# Snap complaints into the same 0.001° bins (100x100 meters) as SQL
+lat_bins = np.round(lats, 3)
+lon_bins = np.round(lons, 3)
 
-H, xedges, yedges = np.histogram2d(
-    lons, lats, bins=[BINS_X, BINS_Y], range=[[lon_min, lon_max], [lat_min, lat_max]]
-)
+# Count per bin
+df_bins = pd.DataFrame({"lat_bin": lat_bins, "lon_bin": lon_bins})
+counts = df_bins.value_counts().reset_index(name="count")
 
-fig, ax = plt.subplots(figsize=(7, 9))  # single chart, no subplots
-extent = [lon_min, lon_max, lat_min, lat_max]
-ax.imshow(H.T, origin="lower", extent=extent, aspect="equal")
-ax.plot([hq_lon], [hq_lat], marker="o", markersize=6)
+# Pivot to 2D grid
+pivot = counts.pivot(index="lat_bin", columns="lon_bin", values="count").fillna(0)
 
-# 2-mile radius circle (approx, using degrees per mile)
+# Prepare mesh for plotting
+lon_coords = pivot.columns.values
+lat_coords = pivot.index.values
+X, Y = np.meshgrid(lon_coords, lat_coords)
+
+fig, ax = plt.subplots(figsize=(7, 9))
+mesh = ax.pcolormesh(X, Y, pivot.values, cmap="hot", shading="auto")
+
+# HQ marker
+ax.plot([hq_lon], [hq_lat], marker="o", markersize=6, color="red")
+
+# Add radius circle
 lat_per_mile = 1.0 / 69.0
 lon_per_mile = 1.0 / (69.0 * math.cos(math.radians(hq_lat)))
 theta = np.linspace(0, 2*np.pi, 360)
-circle_lats = hq_lat + RADIUS_MILES * lat_per_mile * np.sin(theta)
-circle_lons = hq_lon + RADIUS_MILES * lon_per_mile * np.cos(theta)
-ax.plot(circle_lons, circle_lats, linewidth=1.5)
+ax.plot(
+    hq_lon + RADIUS_MILES * lon_per_mile * np.cos(theta),
+    hq_lat + RADIUS_MILES * lat_per_mile * np.sin(theta),
+    linewidth=1.5,
+    color="blue"
+)
 
-ax.set_title("Manhattan Elevator Requests — Density Heat Map (Local)")
+# Colorbar below chart
+cbar = fig.colorbar(mesh, ax=ax, orientation="horizontal", fraction=0.05, pad=0.1)
+cbar.set_label("Complaints per 0.001° bin")
+
+ax.set_title("Manhattan Elevator Requests — Heat Map (SQL Bin HQ)")
 ax.set_xlabel("Longitude")
 ax.set_ylabel("Latitude")
 plt.tight_layout()
@@ -131,7 +108,7 @@ fig.savefig("manhattan_elevator_heatmap.png", dpi=200)
 print("Saved heat map to manhattan_elevator_heatmap.png")
 
 # ----------------------------
-# 3) Cloud: yearly counts in 2-mile radius -> pivoted pandas DataFrame
+# 4) Cloud: yearly counts in 2-mile radius -> pivoted pandas DataFrame
 # ----------------------------
 load_dotenv()
 token = os.getenv("MOTHERDUCK_TOKEN")
@@ -174,26 +151,15 @@ GROUP BY year, complaint_type
 ORDER BY year, complaint_type;
 """
 
-df = md_con.execute(cloud_sql_yearly).fetchdf()  # -> pandas DataFrame
+df = md_con.execute(cloud_sql_yearly).fetchdf()
 pivoted = (
     df.pivot(index="complaint_type", columns="year", values="requests_in_radius")
       .fillna(0)
       .astype(int)
 )
 
-# Sort by a specific year (e.g., 2022) if present
 if SORT_YEAR in pivoted.columns:
     pivoted = pivoted.sort_values(by=SORT_YEAR, ascending=False)
 
 print("\nPivoted DataFrame (complaint_type x year, sorted by", SORT_YEAR, "):")
-print(pivoted.head(20))  # preview
-
-# Optional: save artifacts 
-# 
-# pivoted.to_csv("radius_requests_by_year.csv")
-# try:
-#     pivoted.to_parquet("radius_requests_by_year.parquet", index=True)
-# except Exception as e:
-#     print("Parquet save skipped (install pyarrow or fastparquet to enable).", e)
-# print("Saved pivot to radius_requests_by_year.csv (and parquet if available).")
-# 
+print(pivoted.head(25))
