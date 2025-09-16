@@ -1,0 +1,60 @@
+# Configure token
+
+```
+export MOTHERDUCK_TOKEN=your_token_here      # macOS / Linux
+setx MOTHERDUCK_TOKEN "your_token_here"      # Windows PowerShell
+```
+
+# Test the connection
+
+```
+duckdb md:
+```
+
+```sql
+SHOW DATABASES;
+```
+
+# Query some data
+
+```sql
+SELECT 
+    strftime('%Y', created_date) AS year,
+    COUNT(*) AS complaints
+FROM sample_data.nyc.service_requests
+GROUP BY year
+ORDER BY year;
+```
+
+```sql
+SELECT 
+    strftime('%Y-%m', created_date) AS month,
+    COUNT(*) AS complaints
+FROM sample_data.nyc.service_requests
+WHERE strftime('%Y', created_date) = '2023'
+  AND complaint_type ILIKE 'elevator'
+  AND borough = 'MANHATTAN'
+GROUP BY month
+ORDER BY month;
+```
+
+```sql
+SELECT 
+    strftime('%Y', created_date) AS year,
+    COUNT(*) AS complaints
+FROM sample_data.nyc.service_requests
+WHERE complaint_type ILIKE 'elevator'
+  AND borough = 'MANHATTAN'
+GROUP BY year
+ORDER BY year;
+```
+
+```sql
+SELECT 
+    strftime('%Y', "Created Date") AS year,
+    COUNT(*) AS complaints
+FROM read_csv_auto('311_Elevator_Service_Requests_.csv')
+WHERE "Borough" = 'MANHATTAN'
+GROUP BY year
+ORDER BY year;
+```

@@ -1,0 +1,21 @@
+```
+pyenv virtualenv 3.11.6 MotherDuck
+```
+
+```
+pyenv activate MotherDuck
+```
+
+```
+pyenv local MotherDuck
+```
+
+```
+pip install --upgrade pip
+pip install duckdb
+
+```
+
+```python
+python -c "import duckdb; print(duckdb.__version__)"
+```
