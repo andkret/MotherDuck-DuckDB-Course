@@ -10,7 +10,8 @@ token = os.getenv("MOTHERDUCK_TOKEN")
 if not token:
     raise RuntimeError("MotherDuck token not found. Did you set it in .env?")
 
-con = duckdb.connect(f"md:?motherduck_token={token}")
+# Connect directly to the new database (optional, create it first!)
+con = duckdb.connect(f"md:course_demo?motherduck_token={token}")
 
 # Step 1: Local load (L)
 con.execute("""
