@@ -10,7 +10,13 @@ Download this dataset as CSV (name it `311_Elevator_Service_Requests_.csv`) and 
 
 ---
 
-## 1. Peek at the Data
+## 1. Look at the file structure
+```sql
+DESCRIBE SELECT * 
+FROM read_csv_auto('311_Elevator_Service_Requests_.csv');
+```
+
+## 2. Peek at the Data
 
 ```sql
 .mode csv
@@ -25,7 +31,7 @@ LIMIT 5;
 
 ---
 
-## 2. Time Breakdown of Elevator Complaints (Monthly)
+## 3. Time Breakdown of Elevator Complaints (Monthly)
 
 ```sql
 SELECT strftime('%Y-%m', "Created Date") AS month,
@@ -39,7 +45,7 @@ _This shows us how many elevator complaints happen each month._
 
 ---
 
-## 3. Geographic Breakdown (by Borough)
+## 4. Geographic Breakdown (by Borough)
 
 ```sql
 SELECT "Borough", COUNT(*) AS complaints
@@ -50,7 +56,7 @@ ORDER BY complaints DESC;
 
 ---
 
-## 4. Focus on Manhattan Complaints Over Time
+## 5. Focus on Manhattan Complaints Over Time
 
 ```sql
 SELECT 
@@ -64,7 +70,7 @@ ORDER BY month;
 
 ---
 
-## 5. Elevator Complaints per ZIP (Manhattan Only)
+## 6. Elevator Complaints per ZIP (Manhattan Only)
 
 ```sql
 SELECT "Incident Zip",
@@ -77,7 +83,7 @@ ORDER BY complaints DESC;
 
 ---
 
-## 6. Elevator Complaints by Street Name (Top 20 in Manhattan)
+## 7. Elevator Complaints by Street Name (Top 20 in Manhattan)
 
 ```sql
 SELECT "Street Name",
@@ -97,7 +103,7 @@ We’ll now use geographic coordinates (latitude/longitude) to estimate good hea
 
 ---
 
-## 7. Simple Centroid Approach
+## 8. Simple Centroid Approach
 
 ```sql
 SELECT 
@@ -111,7 +117,7 @@ WHERE "Borough" = 'MANHATTAN';
 
 ---
 
-## 8. Weighted Centroid (Better)
+## 8_1. Weighted Centroid (Better)
 
 ```sql
 WITH street_points AS (
@@ -134,7 +140,7 @@ FROM street_points;
 
 ---
 
-## 9. Median Point (Robust to Outliers)
+## 8_2. Median Point (Robust to Outliers)
 
 ```sql
 SELECT 
