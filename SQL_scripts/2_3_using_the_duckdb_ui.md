@@ -1,3 +1,15 @@
+# DuckDB UI
+
+**Start the UI**
+```sql
+duckdb -ui
+```
+
+**Start the UI when in the CLI**
+```sql
+CALL start_ui();
+```
+
 # Create a View
 
 ```sql
