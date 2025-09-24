@@ -11,14 +11,13 @@ setx MOTHERDUCK_TOKEN "your_token_here"      # Windows PowerShell
 duckdb md:
 ```
 
-# File shares from MotherDuck
+# Attach the file share from MotherDuck
 https://motherduck.com/docs/getting-started/sample-data-queries/datasets/
 
 
 ```sql
 ATTACH 'md:_share/sample_data/23b0d623-1361-421d-ae77-62d701d471e6';
 ```
-
 
 ```sql
 SHOW DATABASES;
@@ -66,4 +65,9 @@ FROM read_csv_auto('311_Elevator_Service_Requests_.csv')
 WHERE "Borough" = 'MANHATTAN'
 GROUP BY year
 ORDER BY year;
+```
+
+# Detach the DATABASE
+```sql
+DETACH sample_data;
 ```
