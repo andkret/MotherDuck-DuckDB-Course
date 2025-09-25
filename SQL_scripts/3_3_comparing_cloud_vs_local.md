@@ -31,7 +31,7 @@ WITH local_counts AS (
     EXTRACT(YEAR FROM "Created Date") AS year,
     COUNT(*) AS complaints,
     'local' AS source
-  FROM local.elevator_requests
+  FROM elevator_requests
   GROUP BY year
 ),
 md_counts AS (
