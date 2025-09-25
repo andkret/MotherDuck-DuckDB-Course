@@ -1,5 +1,6 @@
 import duckdb
 import re
+import pandas
 
 con = duckdb.connect("elt.duckdb")
 
@@ -39,8 +40,8 @@ for (col,) in cols:
         con.execute(sql)
 
 # Step 4: Verify
-print(con.execute("PRAGMA table_info('clean_requests');").fetchdf())
-
+df = con.execute("PRAGMA table_info('clean_requests');").fetchdf()
+print(df)
 
 # Step 5: Add closed_in_days column to the dimension table
 con.execute("""
