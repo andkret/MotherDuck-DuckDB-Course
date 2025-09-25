@@ -1,13 +1,28 @@
+# Install pyenv on WSL
+Install pyenv
 ```
-pyenv virtualenv 3.11.6 MotherDuck
+curl -fsSL https://pyenv.run | bash
+```
+
+Add this to your bash path by editing ~/.bashrc and add
+```
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+```
+
+Install python version and create the environment
+```
+pyenv install 3.11.6
+pyenv virtualenv 3.11.6 motherduck
 ```
 
 ```
-pyenv activate MotherDuck
+pyenv activate motherduck
 ```
 
 ```
-pyenv local MotherDuck
+pyenv local motherduck
 ```
 
 ```
