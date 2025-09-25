@@ -1,4 +1,4 @@
-´´´sql
+```sql
 EXPLAIN ANALYZE
 WITH local_counts AS (
   SELECT
@@ -22,9 +22,9 @@ UNION ALL
 SELECT *
 FROM md_counts
 ORDER BY year, source;
-´´´
+```
 
-´´´sql
+```sql
 EXPLAIN ANALYZE
 WITH local_counts AS (
   SELECT
@@ -49,5 +49,5 @@ UNION ALL
 SELECT *
 FROM md_counts
 ORDER BY year, source;
-´´´
+```
 
