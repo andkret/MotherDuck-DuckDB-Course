@@ -10,7 +10,7 @@ CALL start_ui();
 SELECT 
     strftime('%Y', created_date) AS month,
     COUNT(*) AS complaints
-FROM nyc.service_requests
+FROM sample_data.nyc.service_requests
 WHERE "Borough" = 'MANHATTAN'
 GROUP BY month
 ORDER BY month;
