@@ -17,6 +17,19 @@ SELECT
   ORDER BY complaint_count DESC;
 ```
 
+```
+duckdb elt.duckdb
+```
+
+```sql
+SELECT 
+      complaint_type,
+      COUNT(*) AS complaint_count
+  FROM clean_requests
+  GROUP BY complaint_type
+  ORDER BY complaint_count DESC;
+```
+
 # If you run into the _ctypes error
 **Install linux packages**
 ```
@@ -38,5 +51,6 @@ pyenv install 3.11.6
 ```
 pyenv virtualenv 3.11.6 motherduck
 pyenv activate motherduck
+python -m pip install --upgrade pip
 pip install duckdb pandas
 ```

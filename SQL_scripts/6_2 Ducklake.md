@@ -88,7 +88,7 @@ CREATE DATABASE my_ducklake (
 ```sql
 CREATE TABLE my_ducklake.main.clean_requests AS
 SELECT *
-FROM my_db.main.clean_requests;
+FROM course_demo.main.clean_requests;
 ```
 
 ---

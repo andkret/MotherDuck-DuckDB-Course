@@ -1,6 +1,6 @@
 import duckdb
 import re
-import pandas
+
 
 con = duckdb.connect("elt.duckdb")
 

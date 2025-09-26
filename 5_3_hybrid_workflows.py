@@ -1,4 +1,3 @@
-# simple_hq_hotspot_sqlbins.py
 import os
 import math
 import numpy as np
